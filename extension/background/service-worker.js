@@ -47,6 +47,16 @@ class LinearAssistantBackground {
                     sendResponse(serverStatus);
                     break;
 
+                case 'validateLinearKey':
+                    const validationResult = await this.validateLinearApiKey(message.apiKey);
+                    sendResponse(validationResult);
+                    break;
+
+                case 'getLinearWorkspace':
+                    const workspaceResult = await this.getLinearWorkspaceInfo(message.apiKey);
+                    sendResponse(workspaceResult);
+                    break;
+
                 default:
                     sendResponse({ success: false, error: 'Unknown action' });
             }
@@ -166,12 +176,76 @@ class LinearAssistantBackground {
         }
     }
 
+    async validateLinearApiKey(apiKey) {
+        try {
+            // Send API key to MCP server for validation
+            const response = await fetch(`${this.mcpServerUrl}/linear/validate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    apiKey: apiKey
+                })
+            });
+
+            if (!response.ok) {
+                return { success: false, error: `Validation failed: ${response.status}` };
+            }
+
+            const data = await response.json();
+            return {
+                success: data.valid || false,
+                user: data.user || null,
+                error: data.error || null
+            };
+
+        } catch (error) {
+            console.error('Linear API key validation error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    async getLinearWorkspaceInfo(apiKey) {
+        try {
+            // Get workspace/organization info from Linear
+            const response = await fetch(`${this.mcpServerUrl}/linear/workspace`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    apiKey: apiKey
+                })
+            });
+
+            if (!response.ok) {
+                return { success: false, error: `Failed to get workspace info: ${response.status}` };
+            }
+
+            const data = await response.json();
+            return {
+                success: true,
+                workspace: data.workspace || data.organization || 'Linear Workspace',
+                user: data.user || null
+            };
+
+        } catch (error) {
+            console.error('Linear workspace info error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
     async sendToMcpServer(message, context, authToken) {
         try {
+            // Get Linear API key from storage
+            const result = await chrome.storage.local.get(['linear_api_key']);
+            
             const payload = {
                 message: message,
                 context: context,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                linearApiKey: result.linear_api_key // Include Linear API key
             };
 
             const response = await fetch(`${this.mcpServerUrl}/chat`, {

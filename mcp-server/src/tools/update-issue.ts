@@ -121,7 +121,7 @@ ${changes.length > 0 ? changes.join('\n') : 'No visible changes detected'}
 - Priority: ${['No priority', 'Low', 'Medium', 'High', 'Urgent'][updatedIssue.priority] || 'No priority'}
 - URL: ${updatedIssue.url}
 ${updatedIssue.assignee ? `- Assignee: ${updatedIssue.assignee.name}` : '- Unassigned'}
-${updatedIssue.labels.length > 0 ? `\n🏷️ Labels: ${updatedIssue.labels.map(l => l.name).join(', ')}` : ''}`
+${updatedIssue.labels.length > 0 ? `\n🏷️ Labels: ${updatedIssue.labels.map((l: any) => l.name).join(', ')}` : ''}`
         }
       ]
     };

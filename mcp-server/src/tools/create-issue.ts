@@ -1,4 +1,14 @@
-import { LinearClient, CreateIssueInput } from '../linear-client';
+import { LinearClient } from '../linear-client';
+
+interface CreateIssueInput {
+  title: string;
+  description?: string;
+  teamId: string;
+  priority?: number;
+  assigneeId?: string;
+  labelIds?: string[];
+  stateId?: string;
+}
 
 export async function createIssueService(linearClient: LinearClient, args: any) {
   try {
@@ -68,7 +78,7 @@ export async function createIssueService(linearClient: LinearClient, args: any) 
 - URL: ${issue.url}
 ${issue.assignee ? `- Assignee: ${issue.assignee.name}` : '- Unassigned'}
 ${issue.description ? `\n📝 Description: ${issue.description}` : ''}
-${issue.labels.length > 0 ? `\n🏷️ Labels: ${issue.labels.map(l => l.name).join(', ')}` : ''}`
+${issue.labels.length > 0 ? `\n🏷️ Labels: ${issue.labels.map((l: any) => l.name).join(', ')}` : ''}`
         }
       ]
     };

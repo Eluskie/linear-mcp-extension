@@ -41,10 +41,10 @@ Try broadening your search criteria or use the get-teams tool to see available t
     }
 
     // Format the results
-    const resultsText = issues.map((issue, index) => {
+    const resultsText = issues.map((issue: any, index: number) => {
       const assigneeText = issue.assignee ? ` • Assigned to ${issue.assignee.name}` : ' • Unassigned';
       const priorityText = issue.priority > 0 ? ` • Priority ${issue.priority}` : '';
-      const labelsText = issue.labels.length > 0 ? ` • Labels: ${issue.labels.map(l => l.name).join(', ')}` : '';
+      const labelsText = issue.labels.length > 0 ? ` • Labels: ${issue.labels.map((l: any) => l.name).join(', ')}` : '';
       
       return `${index + 1}. ${issue.identifier}: ${issue.title}
    📊 ${issue.state.name} in ${issue.team.name}${assigneeText}${priorityText}${labelsText}

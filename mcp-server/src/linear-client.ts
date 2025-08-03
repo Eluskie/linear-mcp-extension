@@ -1,4 +1,7 @@
 import { LinearClient as LinearSDK, LinearDocument } from '@linear/sdk';
+import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 
 export interface LinearIssue {
   id: string;
@@ -70,6 +73,32 @@ export interface SearchIssuesInput {
   limit?: number;
 }
 
+// Simple encryption for local storage
+const ENCRYPTION_KEY = crypto.scryptSync('linear-mcp-key', 'salt', 32);
+const STORAGE_FILE = path.join(__dirname, '..', 'data', 'api-keys.json');
+
+function encrypt(text: string): string {
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  return iv.toString('hex') + ':' + encrypted;
+}
+
+function decrypt(encryptedText: string): string {
+  const parts = encryptedText.split(':');
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+    throw new Error('Invalid encrypted data format');
+  }
+  const ivString = parts[0];
+  const encryptedString = parts[1];
+  const iv = Buffer.from(ivString, 'hex');
+  const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+  const decryptedBuffer = decipher.update(encryptedString, 'hex');
+  const finalBuffer = decipher.final();
+  return Buffer.concat([decryptedBuffer, finalBuffer]).toString('utf8');
+}
+
 export class LinearClient {
   private client: LinearSDK;
 
@@ -79,6 +108,73 @@ export class LinearClient {
     }
     
     this.client = new LinearSDK({ apiKey });
+  }
+
+  // Static method to create client with stored API key
+  static async createFromStoredKey(): Promise<LinearClient | null> {
+    try {
+      const apiKey = await LinearClient.getStoredApiKey();
+      return apiKey ? new LinearClient(apiKey) : null;
+    } catch (error) {
+      console.error('Error creating client from stored key:', error);
+      return null;
+    }
+  }
+
+  // Store API key securely
+  static async storeApiKey(apiKey: string): Promise<void> {
+    try {
+      // Ensure data directory exists
+      const dataDir = path.dirname(STORAGE_FILE);
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+
+      // Test the API key first
+      const testClient = new LinearSDK({ apiKey });
+      await testClient.viewer; // This will throw if invalid
+
+      // Encrypt and store
+      const encrypted = encrypt(apiKey);
+      const data = { apiKey: encrypted, storedAt: new Date().toISOString() };
+      
+      fs.writeFileSync(STORAGE_FILE, JSON.stringify(data, null, 2));
+      console.log('Linear API key stored successfully');
+    } catch (error) {
+      console.error('Error storing API key:', error);
+      throw new Error(`Failed to store API key: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  // Get stored API key
+  static async getStoredApiKey(): Promise<string | null> {
+    try {
+      if (!fs.existsSync(STORAGE_FILE)) {
+        return null;
+      }
+
+      const data = JSON.parse(fs.readFileSync(STORAGE_FILE, 'utf8'));
+      if (!data.apiKey) {
+        return null;
+      }
+
+      return decrypt(data.apiKey);
+    } catch (error) {
+      console.error('Error retrieving stored API key:', error);
+      return null;
+    }
+  }
+
+  // Clear stored API key
+  static async clearStoredApiKey(): Promise<void> {
+    try {
+      if (fs.existsSync(STORAGE_FILE)) {
+        fs.unlinkSync(STORAGE_FILE);
+        console.log('Stored API key cleared');
+      }
+    } catch (error) {
+      console.error('Error clearing stored API key:', error);
+    }
   }
 
   async createIssue(input: CreateIssueInput): Promise<LinearIssue> {
@@ -258,6 +354,12 @@ export class LinearClient {
       console.error('Error getting current user:', error);
       throw new Error(`Failed to get current user: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  }
+
+  async getWorkspaceName(): Promise<string | null> {
+    // Skip workspace name lookup for now to avoid crashes
+    console.log('🔍 Skipping workspace name lookup');
+    return null;
   }
 
   private async formatIssue(issue: any): Promise<LinearIssue> {

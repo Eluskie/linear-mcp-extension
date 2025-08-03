@@ -22,9 +22,9 @@ Please check your Linear account and API key permissions.`
     }
 
     // Format teams information
-    const teamsText = teams.map((team, index) => {
+    const teamsText = teams.map((team: any, index: number) => {
       const statesText = team.states.length > 0 
-        ? team.states.map(state => `${state.name} (${state.type})`).join(', ')
+        ? team.states.map((state: any) => `${state.name} (${state.type})`).join(', ')
         : 'No states available';
       
       return `${index + 1}. ${team.name} (${team.key})
